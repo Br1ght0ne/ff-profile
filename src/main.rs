@@ -42,14 +42,12 @@ fn default_profile_path() -> Result<PathBuf> {
 }
 
 fn find_default_profile(ini: &Ini) -> Result<&String> {
-    for (section, props) in ini.iter() {
-        if let Some(section) = section {
-            if section.starts_with("Install") {
-                return props.get("Default".into()).context(NoDefaultProfile);
-            }
-        }
-    }
-    Err(Error::NoInstallSection)
+    ini.iter()
+        // remove the Option layer from section names
+        .filter_map(|(section, props): (&Option<String>, _)| section.as_ref().map(|s| (s, props)))
+        .find(|(section, _): &(&String, _)| section.starts_with("Install"))
+        .context(NoInstallSection)
+        .and_then(|(_, props)| props.get("Default".into()).context(NoDefaultProfile))
 }
 
 fn firefox_home() -> Result<PathBuf> {
